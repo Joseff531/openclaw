@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "../config/types.js";
 import type { UpdateCheckResult } from "../infra/update-check.js";
+import type { PluginMetadataSnapshot } from "../plugins/plugin-metadata-snapshot.js";
 import { buildStatusJsonPayload } from "./status-json-payload.ts";
 import { buildStatusOverviewSurfaceFromScan } from "./status-overview-surface.ts";
 import { resolveStatusRuntimeSnapshot } from "./status-runtime-shared.ts";
@@ -58,6 +59,7 @@ export async function resolveStatusJsonOutput(params: {
   includeSecurityAudit: boolean;
   includePluginCompatibility?: boolean;
   suppressHealthErrors?: boolean;
+  metadataSnapshot?: PluginMetadataSnapshot;
 }) {
   const { scan, opts } = params;
   const { securityAudit, usage, health, lastHeartbeat, gatewayService, nodeService } =
@@ -70,6 +72,7 @@ export async function resolveStatusJsonOutput(params: {
       gatewayReachable: scan.gatewayReachable,
       includeSecurityAudit: params.includeSecurityAudit,
       suppressHealthErrors: params.suppressHealthErrors,
+      metadataSnapshot: params.metadataSnapshot,
     });
 
   return buildStatusJsonPayload({

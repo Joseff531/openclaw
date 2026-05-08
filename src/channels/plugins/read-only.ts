@@ -16,7 +16,10 @@ import {
   resolveSetupChannelRegistration,
 } from "../../plugins/loader-channel-setup.js";
 import type { PluginManifestRecord } from "../../plugins/manifest-registry.js";
-import { loadPluginMetadataSnapshot } from "../../plugins/plugin-metadata-snapshot.js";
+import {
+  loadPluginMetadataSnapshot,
+  type PluginMetadataSnapshot,
+} from "../../plugins/plugin-metadata-snapshot.js";
 import {
   getCachedPluginModuleLoader,
   type PluginModuleLoaderCache,
@@ -125,6 +128,7 @@ type ReadOnlyChannelPluginOptions = {
   activationSourceConfig?: OpenClawConfig;
   includePersistedAuthState?: boolean;
   includeSetupFallbackPlugins?: boolean;
+  metadataSnapshot?: PluginMetadataSnapshot;
 };
 
 type ReadOnlyChannelPluginResolution = {
@@ -699,13 +703,14 @@ export function resolveReadOnlyChannelPluginsForConfig(
   const env = options.env ?? process.env;
   const workspaceDir = resolveReadOnlyWorkspaceDir(cfg, options);
   const metadataSnapshot =
-    options.stateDir === undefined
+    options.metadataSnapshot ??
+    (options.stateDir === undefined
       ? getCurrentPluginMetadataSnapshot({
           config: cfg,
           env,
           workspaceDir,
         })
-      : undefined;
+      : undefined);
   const manifestRecords =
     metadataSnapshot?.plugins ??
     loadPluginMetadataSnapshot({

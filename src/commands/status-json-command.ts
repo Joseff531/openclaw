@@ -1,3 +1,4 @@
+import type { PluginMetadataSnapshot } from "../plugins/plugin-metadata-snapshot.js";
 import { type RuntimeEnv, writeRuntimeJson } from "../runtime.js";
 import { resolveStatusJsonOutput } from "./status-json-runtime.ts";
 
@@ -17,9 +18,12 @@ export async function runStatusJsonCommand(params: {
   scanStatusJsonFast: (
     opts: { timeoutMs?: number; all?: boolean },
     runtime: RuntimeEnv,
-  ) => Promise<Parameters<typeof resolveStatusJsonOutput>[0]["scan"]>;
+  ) => Promise<{
+    scan: Parameters<typeof resolveStatusJsonOutput>[0]["scan"];
+    metadataSnapshot: PluginMetadataSnapshot | undefined;
+  }>;
 }) {
-  const scan = await params.scanStatusJsonFast(
+  const { scan, metadataSnapshot } = await params.scanStatusJsonFast(
     { timeoutMs: params.opts.timeoutMs, all: params.opts.all },
     params.runtime,
   );
@@ -31,6 +35,7 @@ export async function runStatusJsonCommand(params: {
       includeSecurityAudit: params.includeSecurityAudit,
       includePluginCompatibility: params.includePluginCompatibility,
       suppressHealthErrors: params.suppressHealthErrors,
+      metadataSnapshot,
     }),
   );
 }

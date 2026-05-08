@@ -78,7 +78,10 @@ function createScanResult() {
 describe("statusJsonCommand", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.scanStatusJsonFast.mockResolvedValue(createScanResult());
+    mocks.scanStatusJsonFast.mockResolvedValue({
+      scan: createScanResult(),
+      metadataSnapshot: undefined,
+    });
     mocks.runSecurityAudit.mockResolvedValue({
       summary: { critical: 1, warn: 0, info: 0 },
       findings: [],

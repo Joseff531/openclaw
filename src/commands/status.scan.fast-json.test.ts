@@ -6,18 +6,49 @@ import {
   createStatusScanSharedMocks,
   createStatusSummary,
   loadStatusScanModuleForTest,
+  type StatusScanModuleTestMocks,
   withTemporaryEnv,
 } from "./status.scan.test-helpers.js";
 
-const mocks = {
+const mocks: StatusScanModuleTestMocks = {
   ...createStatusScanSharedMocks("status-fast-json"),
   getStatusCommandSecretTargetIds: vi.fn(() => []),
   resolveMemorySearchConfig: vi.fn(),
+  loadPluginMetadataSnapshot: vi.fn(),
 };
 
 let originalForceStderr: boolean;
 let loggingStateRef: typeof import("../logging/state.js").loggingState;
 let scanStatusJsonFast: typeof import("./status.scan.fast-json.js").scanStatusJsonFast;
+
+const minimalSnapshot = {
+  policyHash: "test",
+  plugins: [],
+  byPluginId: new Map(),
+  index: { plugins: [], installRecords: [], diagnostics: [] },
+  manifestRegistry: { plugins: [], byPluginId: new Map() },
+  diagnostics: [],
+  registryDiagnostics: [],
+  owners: {
+    channels: new Map(),
+    channelConfigs: new Map(),
+    providers: new Map(),
+    modelCatalogProviders: new Map(),
+    cliBackends: new Map(),
+    setupProviders: new Map(),
+    commandAliases: new Map(),
+    contracts: new Map(),
+  },
+  metrics: {
+    registrySnapshotMs: 0,
+    manifestRegistryMs: 0,
+    ownerMapsMs: 0,
+    totalMs: 0,
+    indexPluginCount: 0,
+    manifestPluginCount: 0,
+  },
+  normalizePluginId: (id: string) => id,
+} as never;
 
 function configureFastJsonStatus() {
   applyStatusScanDefaults(mocks, {
@@ -30,6 +61,7 @@ function configureFastJsonStatus() {
   mocks.resolveMemorySearchConfig.mockReturnValue({
     store: { path: "/tmp/main.sqlite" },
   });
+  (mocks.loadPluginMetadataSnapshot as ReturnType<typeof vi.fn>).mockReturnValue(minimalSnapshot);
 }
 
 beforeAll(async () => {
@@ -109,9 +141,9 @@ describe("scanStatusJsonFast", () => {
   });
 
   it("skips memory inspection for the lean status --json fast path", async () => {
-    const result = await scanStatusJsonFast({}, {} as never);
+    const { scan } = await scanStatusJsonFast({}, {} as never);
 
-    expect(result.memory).toBeNull();
+    expect(scan.memory).toBeNull();
     expect(mocks.hasPotentialConfiguredChannels).toHaveBeenCalledWith(
       expect.any(Object),
       process.env,
@@ -122,9 +154,9 @@ describe("scanStatusJsonFast", () => {
   });
 
   it("restores memory inspection when --all is requested", async () => {
-    const result = await scanStatusJsonFast({ all: true }, {} as never);
+    const { scan } = await scanStatusJsonFast({ all: true }, {} as never);
 
-    expect(result.memory).toEqual(expect.objectContaining({ agentId: "main" }));
+    expect(scan.memory).toEqual(expect.objectContaining({ agentId: "main" }));
     expect(mocks.resolveMemorySearchConfig).toHaveBeenCalled();
     expect(mocks.getMemorySearchManager).toHaveBeenCalledWith({
       cfg: expect.objectContaining({
@@ -153,5 +185,15 @@ describe("scanStatusJsonFast", () => {
 
     expect(mocks.getUpdateCheckResult).not.toHaveBeenCalled();
     expect(mocks.probeGateway).not.toHaveBeenCalled();
+  });
+
+  it("builds the plugin metadata snapshot exactly once and returns it for reuse", async () => {
+    const { metadataSnapshot } = await scanStatusJsonFast({}, {} as never);
+
+    expect(mocks.loadPluginMetadataSnapshot).toHaveBeenCalledTimes(1);
+    expect(metadataSnapshot).toBeDefined();
+    expect(metadataSnapshot).toBe(
+      (mocks.loadPluginMetadataSnapshot as ReturnType<typeof vi.fn>).mock.results[0]?.value,
+    );
   });
 });

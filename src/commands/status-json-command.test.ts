@@ -51,7 +51,8 @@ describe("runStatusJsonCommand", () => {
       agentStatus: [],
       secretDiagnostics: [],
     };
-    const scanStatusJsonFast = vi.fn(async () => scan);
+    const metadataSnapshot = { policyHash: "abc" } as never;
+    const scanStatusJsonFast = vi.fn(async () => ({ scan, metadataSnapshot }));
 
     await runStatusJsonCommand({
       opts: { deep: true, usage: true, timeoutMs: 1234, all: true },
@@ -69,6 +70,7 @@ describe("runStatusJsonCommand", () => {
       includeSecurityAudit: true,
       includePluginCompatibility: true,
       suppressHealthErrors: true,
+      metadataSnapshot,
     });
     expect(mocks.writeRuntimeJson).toHaveBeenCalledWith(runtime, {
       built: true,
@@ -78,6 +80,7 @@ describe("runStatusJsonCommand", () => {
         includeSecurityAudit: true,
         includePluginCompatibility: true,
         suppressHealthErrors: true,
+        metadataSnapshot,
       },
     });
   });

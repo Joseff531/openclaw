@@ -721,9 +721,10 @@ vi.mock("../plugins/status.js", () => ({
 }));
 
 vi.mock("./status.scan.fast-json.js", () => ({
-  scanStatusJsonFast: vi.fn(async () =>
-    createMockStatusScanResult({ includePluginCompatibility: false }),
-  ),
+  scanStatusJsonFast: vi.fn(async () => ({
+    scan: await createMockStatusScanResult({ includePluginCompatibility: false }),
+    metadataSnapshot: undefined,
+  })),
 }));
 
 vi.mock("./status.scan.js", () => ({

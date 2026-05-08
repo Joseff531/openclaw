@@ -1,5 +1,9 @@
 import type { OpenClawConfig } from "../config/types.js";
 import { hasConfiguredChannelsForReadOnlyScope } from "../plugins/channel-plugin-ids.js";
+import {
+  loadPluginMetadataSnapshot,
+  type PluginMetadataSnapshot,
+} from "../plugins/plugin-metadata-snapshot.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { executeStatusScanFromOverview } from "./status.scan-execute.ts";
 import {
@@ -47,24 +51,34 @@ export async function scanStatusJsonWithPolicy(
   });
 }
 
+export type StatusJsonFastScanResult = {
+  scan: StatusScanResult;
+  metadataSnapshot: PluginMetadataSnapshot | undefined;
+};
+
 export async function scanStatusJsonFast(
   opts: {
     timeoutMs?: number;
     all?: boolean;
   },
   runtime: RuntimeEnv,
-): Promise<StatusScanResult> {
-  return await scanStatusJsonWithPolicy(opts, runtime, {
+): Promise<StatusJsonFastScanResult> {
+  let metadataSnapshot: PluginMetadataSnapshot | undefined;
+
+  const scan = await scanStatusJsonWithPolicy(opts, runtime, {
     commandName: "status --json",
     allowMissingConfigFastPath: true,
     includeChannelSummary: false,
-    resolveHasConfiguredChannels: (cfg, sourceConfig) =>
-      hasConfiguredChannelsForReadOnlyScope({
+    resolveHasConfiguredChannels: (cfg, sourceConfig) => {
+      metadataSnapshot = loadPluginMetadataSnapshot({ config: cfg, env: process.env });
+      return hasConfiguredChannelsForReadOnlyScope({
         config: cfg,
         activationSourceConfig: sourceConfig,
         env: process.env,
         includePersistedAuthState: false,
-      }),
+        manifestRecords: metadataSnapshot.plugins,
+      });
+    },
     resolveMemory: async ({ cfg, agentStatus, memoryPlugin }) =>
       opts.all
         ? await resolveStatusMemoryStatusSnapshot({
@@ -75,4 +89,6 @@ export async function scanStatusJsonFast(
           })
         : null,
   });
+
+  return { scan, metadataSnapshot };
 }

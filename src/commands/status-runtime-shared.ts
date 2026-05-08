@@ -1,6 +1,7 @@
 import { resolveReadOnlyChannelPluginsForConfig } from "../channels/plugins/read-only.js";
 import type { OpenClawConfig } from "../config/types.js";
 import type { HeartbeatEventPayload } from "../infra/heartbeat-events.js";
+import type { PluginMetadataSnapshot } from "../plugins/plugin-metadata-snapshot.js";
 import { createLazyImportLoader } from "../shared/lazy-promise.js";
 import type { HealthSummary } from "./health.js";
 import { getDaemonStatusSummary, getNodeDaemonStatusSummary } from "./status.daemon.js";
@@ -26,11 +27,13 @@ function loadGatewayCallModule() {
 export async function resolveStatusSecurityAudit(params: {
   config: OpenClawConfig;
   sourceConfig: OpenClawConfig;
+  metadataSnapshot?: PluginMetadataSnapshot;
 }) {
   const { runSecurityAudit } = await loadSecurityAuditModule();
   const readOnlyPlugins = resolveReadOnlyChannelPluginsForConfig(params.config, {
     activationSourceConfig: params.sourceConfig,
     includeSetupFallbackPlugins: false,
+    metadataSnapshot: params.metadataSnapshot,
   });
   return await runSecurityAudit({
     config: params.config,
@@ -179,6 +182,7 @@ export async function resolveStatusRuntimeSnapshot(params: {
   gatewayReachable: boolean;
   includeSecurityAudit?: boolean;
   suppressHealthErrors?: boolean;
+  metadataSnapshot?: PluginMetadataSnapshot;
   resolveSecurityAudit?: (input: {
     config: OpenClawConfig;
     sourceConfig: OpenClawConfig;
@@ -193,6 +197,7 @@ export async function resolveStatusRuntimeSnapshot(params: {
     ? await (params.resolveSecurityAudit ?? resolveStatusSecurityAudit)({
         config: params.config,
         sourceConfig: params.sourceConfig,
+        metadataSnapshot: params.metadataSnapshot,
       })
     : undefined;
   const runtimeDetails = await resolveStatusRuntimeDetails({

@@ -149,11 +149,12 @@ function createStatusExecModuleMock(): { runExec: UnknownMock } {
   };
 }
 
-type StatusScanModuleTestMocks = StatusScanSharedMocks & {
+export type StatusScanModuleTestMocks = StatusScanSharedMocks & {
   buildChannelsTable?: UnknownMock;
   callGateway?: UnknownMock;
   getStatusCommandSecretTargetIds?: UnknownMock;
   resolveMemorySearchConfig?: UnknownMock;
+  loadPluginMetadataSnapshot?: UnknownMock;
 };
 
 export async function loadStatusScanModuleForTest(
@@ -277,6 +278,39 @@ export async function loadStatusScanModuleForTest(
   vi.doMock("../plugins/status.js", () => createStatusPluginStatusModuleMock(mocks));
 
   if (options.fastJson) {
+    const mockLoadPluginMetadataSnapshot =
+      mocks.loadPluginMetadataSnapshot ??
+      vi.fn(() => ({
+        policyHash: "test",
+        plugins: [],
+        byPluginId: new Map(),
+        index: { plugins: [], installRecords: [], diagnostics: [] },
+        manifestRegistry: { plugins: [], byPluginId: new Map() },
+        diagnostics: [],
+        registryDiagnostics: [],
+        owners: {
+          channels: new Map(),
+          channelConfigs: new Map(),
+          providers: new Map(),
+          modelCatalogProviders: new Map(),
+          cliBackends: new Map(),
+          setupProviders: new Map(),
+          commandAliases: new Map(),
+          contracts: new Map(),
+        },
+        metrics: {
+          registrySnapshotMs: 0,
+          manifestRegistryMs: 0,
+          ownerMapsMs: 0,
+          totalMs: 0,
+          indexPluginCount: 0,
+          manifestPluginCount: 0,
+        },
+        normalizePluginId: (id: string) => id,
+      }));
+    vi.doMock("../plugins/plugin-metadata-snapshot.js", () => ({
+      loadPluginMetadataSnapshot: mockLoadPluginMetadataSnapshot,
+    }));
     return await import("./status.scan.fast-json.js");
   }
   return await import("./status.scan.js");
