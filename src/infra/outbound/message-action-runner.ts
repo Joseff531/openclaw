@@ -623,13 +623,13 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
   const hasInteractive = hasInteractiveReplyBlocks(params.interactive);
   const caption = readStringParam(params, "caption", { allowEmpty: true }) ?? "";
   const messageFile = readStringParam(params, "messageFile", { trim: false });
-  if (messageFile !== null && messageFile !== undefined && messageFile !== "") {
-    if (readStringParam(params, "message", { allowEmpty: true })) {
+  let fileMessage: string | null = null;
+  if (messageFile) {
+    if (params.message !== undefined) {
       throw new Error("use --message or --message-file, not both");
     }
-    let fileContent: string;
     try {
-      fileContent = await fs.readFile(messageFile, "utf8");
+      fileMessage = await fs.readFile(messageFile, "utf8");
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ENOENT") {
@@ -640,14 +640,15 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
       }
       throw new Error(`failed to read message file: ${messageFile}`, { cause: err });
     }
-    params.message = fileContent;
   }
   let message =
+    fileMessage ??
     readStringParam(params, "message", {
       required: !mediaHint && !hasPresentation && !hasInteractive,
       allowEmpty: true,
-    }) ?? "";
-  if (message.includes("\\n")) {
+    }) ??
+    "";
+  if (fileMessage === null && message.includes("\\n")) {
     message = message.replaceAll("\\n", "\n");
   }
   if (!message.trim() && caption.trim()) {
